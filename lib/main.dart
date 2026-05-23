@@ -11,7 +11,31 @@ import 'package:timezone/timezone.dart' as tz;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.instance.init();
+
+  // Do not let notification plugin initialization stop the whole app on devices
+  // where the vendor firmware handles alarms/notifications differently.
+  try {
+    await NotificationService.instance.init();
+  } catch (_) {}
+
+  // In release builds users will not see Flutter debug screens. In debug builds
+  // this keeps the app usable even if a non-critical widget reports an error.
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return const Material(
+      color: Color(0xFF05060A),
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'OrbitPlan encountered a UI error. Please restart this screen.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+    );
+  };
+
   runApp(const OrbitPlanApp());
 }
 
@@ -129,7 +153,7 @@ class _OrbitPlanShellState extends State<OrbitPlanShell> {
         child: SafeArea(
           child: Column(
             children: [
-              _TopBar(title: t(tabs[tab]), onSeed: _confirmSeed, data: data, t: t),
+              _TopBar(title: t(tabs[tab]), onSeed: _confirmSeed, onQuickAdd: _quickAdd, data: data, t: t),
               Expanded(child: _buildBody()),
               _BottomNav(
                 current: tab,
@@ -171,14 +195,14 @@ class _OrbitPlanShellState extends State<OrbitPlanShell> {
       context: context,
       backgroundColor: data.theme.card,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (_) => SafeArea(
+      builder: (sheetCtx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            _SheetButton(icon: Icons.repeat, label: t('habit'), onTap: () => Navigator.pop(context, 'habit')),
-            _SheetButton(icon: Icons.check_circle_outline, label: t('task'), onTap: () => Navigator.pop(context, 'task')),
-            _SheetButton(icon: Icons.account_balance_wallet_outlined, label: t('finance'), onTap: () => Navigator.pop(context, 'money')),
-            _SheetButton(icon: Icons.note_alt_outlined, label: t('note'), onTap: () => Navigator.pop(context, 'note')),
+            _SheetButton(icon: Icons.repeat, label: t('habit'), onTap: () => Navigator.of(sheetCtx).pop('habit')),
+            _SheetButton(icon: Icons.check_circle_outline, label: t('task'), onTap: () => Navigator.of(sheetCtx).pop('task')),
+            _SheetButton(icon: Icons.account_balance_wallet_outlined, label: t('finance'), onTap: () => Navigator.of(sheetCtx).pop('money')),
+            _SheetButton(icon: Icons.note_alt_outlined, label: t('note'), onTap: () => Navigator.of(sheetCtx).pop('note')),
           ]),
         ),
       ),
@@ -192,13 +216,13 @@ class _OrbitPlanShellState extends State<OrbitPlanShell> {
   Future<void> _confirmSeed() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: data.theme.card,
         title: Text(t('fillExamples')),
         content: Text(t('fillExamplesQuestion')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t('cancel'))),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(t('fill'))),
+          TextButton(onPressed: () => Navigator.of(dialogCtx).pop(false), child: Text(t('cancel'))),
+          FilledButton(onPressed: () => Navigator.of(dialogCtx).pop(true), child: Text(t('fill'))),
         ],
       ),
     );
@@ -252,12 +276,12 @@ class _OrbitPlanShellState extends State<OrbitPlanShell> {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('cancel'))),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(t('cancel'))),
             FilledButton(
               onPressed: () {
                 final name = title.text.trim();
-                if (name.isEmpty) return Navigator.pop(ctx);
-                Navigator.pop(ctx, Habit(id: uid(), title: name, reminderTime: enabled ? timeToString(reminder) : null));
+                if (name.isEmpty) return Navigator.of(ctx).pop();
+                Navigator.of(ctx).pop(Habit(id: uid(), title: name, reminderTime: enabled ? timeToString(reminder) : null));
               },
               child: Text(t('save')),
             ),
@@ -323,12 +347,12 @@ class _OrbitPlanShellState extends State<OrbitPlanShell> {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('cancel'))),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(t('cancel'))),
             FilledButton(
               onPressed: () {
                 final name = title.text.trim();
-                if (name.isEmpty) return Navigator.pop(ctx);
-                Navigator.pop(ctx, TaskItem(id: uid(), title: name, priority: priority, dueAt: dueAt, reminderAt: reminderAt));
+                if (name.isEmpty) return Navigator.of(ctx).pop();
+                Navigator.of(ctx).pop(TaskItem(id: uid(), title: name, priority: priority, dueAt: dueAt, reminderAt: reminderAt));
               },
               child: Text(t('save')),
             ),
@@ -364,13 +388,13 @@ class _OrbitPlanShellState extends State<OrbitPlanShell> {
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('cancel'))),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(t('cancel'))),
           FilledButton(
             onPressed: () {
               final name = title.text.trim();
               final value = double.tryParse(amount.text.replaceAll(',', '.'));
-              if (name.isEmpty || value == null) return Navigator.pop(ctx);
-              Navigator.pop(ctx, MoneyItem(id: uid(), title: name, amount: value, type: type, category: category.text.trim().isEmpty ? t('other') : category.text.trim(), date: DateTime.now()));
+              if (name.isEmpty || value == null) return Navigator.of(ctx).pop();
+              Navigator.of(ctx).pop(MoneyItem(id: uid(), title: name, amount: value, type: type, category: category.text.trim().isEmpty ? t('other') : category.text.trim(), date: DateTime.now()));
             },
             child: Text(t('save')),
           ),
@@ -410,13 +434,13 @@ class _OrbitPlanShellState extends State<OrbitPlanShell> {
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('cancel'))),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(t('cancel'))),
           FilledButton(
             onPressed: () {
               final name = title.text.trim();
               final text = body.text.trim();
-              if (name.isEmpty && text.isEmpty) return Navigator.pop(ctx);
-              Navigator.pop(ctx, NoteItem(id: edit?.id ?? uid(), title: name.isEmpty ? t('untitled') : name, body: text, color: color, pinned: pinned, createdAt: edit?.createdAt ?? DateTime.now()));
+              if (name.isEmpty && text.isEmpty) return Navigator.of(ctx).pop();
+              Navigator.of(ctx).pop(NoteItem(id: edit?.id ?? uid(), title: name.isEmpty ? t('untitled') : name, body: text, color: color, pinned: pinned, createdAt: edit?.createdAt ?? DateTime.now()));
             },
             child: Text(t('save')),
           ),
@@ -436,9 +460,10 @@ class _OrbitPlanShellState extends State<OrbitPlanShell> {
 class _TopBar extends StatelessWidget {
   final String title;
   final VoidCallback onSeed;
+  final VoidCallback onQuickAdd;
   final AppData data;
   final String Function(String) t;
-  const _TopBar({required this.title, required this.onSeed, required this.data, required this.t});
+  const _TopBar({required this.title, required this.onSeed, required this.onQuickAdd, required this.data, required this.t});
 
   @override
   Widget build(BuildContext context) {
@@ -450,6 +475,8 @@ class _TopBar extends StatelessWidget {
           const SizedBox(height: 3),
           Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -0.7)),
         ])),
+        IconButton.filledTonal(onPressed: onQuickAdd, icon: const Icon(Icons.add), tooltip: t('add')),
+        const SizedBox(width: 8),
         IconButton.filledTonal(onPressed: onSeed, icon: const Icon(Icons.auto_awesome), tooltip: t('fillExamples')),
         const SizedBox(width: 10),
         Container(
@@ -1166,7 +1193,7 @@ Color priorityColor(String p) => p == 'high' ? Colors.redAccent : p == 'low' ? C
 const translations = {
   'ru': {
     'dashboard': 'Главная', 'habits': 'Привычки', 'tasks': 'Задачи', 'finance': 'Финансы', 'notes': 'Заметки', 'settings': 'Настройки',
-    'habit': 'Привычка', 'task': 'Задача', 'note': 'Заметка', 'balance': 'Баланс', 'records': 'Записи',
+    'habit': 'Привычка', 'task': 'Задача', 'note': 'Заметка', 'balance': 'Баланс', 'records': 'Записи', 'add': 'Добавить',
     'heroTitle': 'Панель жизни в одном месте', 'heroText': 'Планы, привычки, деньги и заметки работают оффлайн и всегда под рукой.',
     'todayPlan': 'План на сегодня', 'activity': 'Активность', 'activitySubtitle': 'Отметки привычек за последние недели', 'less': 'Меньше', 'more': 'Больше',
     'newHabit': 'Новая привычка', 'habitName': 'Название привычки', 'dailyReminder': 'Ежедневное напоминание', 'time': 'Время', 'streak': 'Серия', 'noReminder': 'Без напоминания',
@@ -1179,7 +1206,7 @@ const translations = {
   },
   'en': {
     'dashboard': 'Home', 'habits': 'Habits', 'tasks': 'Tasks', 'finance': 'Finance', 'notes': 'Notes', 'settings': 'Settings',
-    'habit': 'Habit', 'task': 'Task', 'note': 'Note', 'balance': 'Balance', 'records': 'Records',
+    'habit': 'Habit', 'task': 'Task', 'note': 'Note', 'balance': 'Balance', 'records': 'Records', 'add': 'Add',
     'heroTitle': 'Your life dashboard', 'heroText': 'Plans, habits, money and notes work offline and stay close to you.',
     'todayPlan': 'Today plan', 'activity': 'Activity', 'activitySubtitle': 'Habit marks from recent weeks', 'less': 'Less', 'more': 'More',
     'newHabit': 'New habit', 'habitName': 'Habit name', 'dailyReminder': 'Daily reminder', 'time': 'Time', 'streak': 'Streak', 'noReminder': 'No reminder',
