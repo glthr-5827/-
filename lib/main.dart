@@ -92,7 +92,11 @@ class _OrbitPlanShellState extends State<OrbitPlanShell> {
   }
 
   Future<void> _scheduleNotifications() async {
-    await NotificationService.instance.scheduleAll(data, t);
+    try {
+      await NotificationService.instance.scheduleAll(data, t);
+    } catch (_) {
+      // Notification errors should never break the app screen.
+    }
   }
 
   void mutate(void Function(AppData d) update, {bool schedule = true}) {
@@ -137,12 +141,7 @@ class _OrbitPlanShellState extends State<OrbitPlanShell> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: data.theme.primary,
-        foregroundColor: Colors.white,
-        onPressed: _quickAdd,
-        child: const Icon(Icons.add),
-      ),
+
     );
   }
 
@@ -447,9 +446,9 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 8),
       child: Row(children: [
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(DateFormat('EEE, d MMM').format(DateTime.now()), style: TextStyle(color: data.theme.muted, fontWeight: FontWeight.w700)),
+          Text(localDateLine(data.language), style: TextStyle(color: data.theme.muted, fontWeight: FontWeight.w700)),
           const SizedBox(height: 3),
-          Text(title, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.7)),
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -0.7)),
         ])),
         IconButton.filledTonal(onPressed: onSeed, icon: const Icon(Icons.auto_awesome), tooltip: t('fillExamples')),
         const SizedBox(width: 10),
@@ -482,34 +481,40 @@ class _BottomNav extends StatelessWidget {
       (Icons.note_alt_rounded, 'notes'),
       (Icons.settings_rounded, 'settings'),
     ];
-    return Container(
-      margin: const EdgeInsets.fromLTRB(14, 4, 14, 12),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: data.theme.card.withOpacity(.92),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: data.theme.line),
-        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 24, offset: Offset(0, 10))],
-      ),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: List.generate(items.length, (i) {
-        final selected = i == current;
-        return Expanded(
-          child: InkWell(
-            borderRadius: BorderRadius.circular(22),
-            onTap: () => onTap(i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(color: selected ? data.theme.primary.withOpacity(.18) : Colors.transparent, borderRadius: BorderRadius.circular(22)),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(items[i].$1, color: selected ? data.theme.primary : data.theme.muted),
-                const SizedBox(height: 3),
-                Text(t(items[i].$2), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: selected ? data.theme.primary : data.theme.muted)),
-              ]),
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+      child: Container(
+        height: 72,
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
+        decoration: BoxDecoration(
+          color: data.theme.card.withOpacity(.96),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: data.theme.line),
+          boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 22, offset: Offset(0, 8))],
+        ),
+        child: Row(children: List.generate(items.length, (i) {
+          final selected = i == current;
+          return Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => onTap(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
+                decoration: BoxDecoration(color: selected ? data.theme.primary.withOpacity(.18) : Colors.transparent, borderRadius: BorderRadius.circular(20)),
+                child: Column(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+                  Icon(items[i].$1, color: selected ? data.theme.primary : data.theme.muted, size: 24),
+                  if (selected) ...[
+                    const SizedBox(height: 3),
+                    Text(t(items[i].$2), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: data.theme.primary)),
+                  ],
+                ]),
+              ),
             ),
-          ),
-        );
-      })),
+          );
+        })),
+      ),
     );
   }
 }
@@ -526,7 +531,7 @@ class DashboardScreen extends StatelessWidget {
     final activeTasks = data.tasks.where((x) => !x.done).length;
     final balance = data.income - data.expenses;
     final notes = data.notes.length;
-    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 100), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 24), children: [
       _HeroCard(data: data, t: t),
       const SizedBox(height: 16),
       GridView.count(
@@ -535,7 +540,7 @@ class DashboardScreen extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.55,
+        childAspectRatio: 1.35,
         children: [
           StatCard(data: data, icon: Icons.repeat, label: t('habits'), value: '$completedToday/${data.habits.length}', onTap: () => go(1)),
           StatCard(data: data, icon: Icons.task_alt, label: t('tasks'), value: '$activeTasks', onTap: () => go(2)),
@@ -574,16 +579,16 @@ class _HeroCard extends StatelessWidget {
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('OrbitPlan', style: TextStyle(color: data.theme.primary, fontWeight: FontWeight.w900)),
           const SizedBox(height: 6),
-          Text(t('heroTitle'), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, height: 1.05)),
+          Text(t('heroTitle'), maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, height: 1.08)),
           const SizedBox(height: 8),
-          Text(t('heroText'), style: TextStyle(color: data.theme.muted, fontWeight: FontWeight.w600)),
+          Text(t('heroText'), maxLines: 4, overflow: TextOverflow.ellipsis, style: TextStyle(color: data.theme.muted, fontWeight: FontWeight.w600, height: 1.25)),
         ])),
         const SizedBox(width: 10),
         Container(
-          width: 90,
-          height: 90,
+          width: 78,
+          height: 78,
           decoration: BoxDecoration(color: data.theme.primary.withOpacity(.14), shape: BoxShape.circle),
-          child: Icon(Icons.auto_graph_rounded, color: data.theme.primary, size: 44),
+          child: Icon(Icons.auto_graph_rounded, color: data.theme.primary, size: 38),
         )
       ]),
     );
@@ -599,7 +604,7 @@ class HabitsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 100), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 24), children: [
       FilledButton.icon(onPressed: onAdd, icon: const Icon(Icons.add), label: Text(t('newHabit'))),
       const SizedBox(height: 14),
       for (final habit in data.habits)
@@ -634,7 +639,7 @@ class TasksScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tasks = [...data.tasks]..sort((a, b) => (a.done ? 1 : 0).compareTo(b.done ? 1 : 0));
-    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 100), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 24), children: [
       FilledButton.icon(onPressed: onAdd, icon: const Icon(Icons.add), label: Text(t('newTask'))),
       const SizedBox(height: 14),
       for (final task in tasks)
@@ -668,14 +673,14 @@ class FinanceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final balance = data.income - data.expenses;
-    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 100), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 24), children: [
       GridView.count(
         crossAxisCount: 2,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.55,
+        childAspectRatio: 1.35,
         children: [
           StatCard(data: data, icon: Icons.trending_up, label: t('income'), value: money(data.income)),
           StatCard(data: data, icon: Icons.trending_down, label: t('expense'), value: money(data.expenses)),
@@ -719,7 +724,7 @@ class _NotesScreenState extends State<NotesScreen> {
   Widget build(BuildContext context) {
     final notes = widget.data.notes.where((n) => (n.title + n.body).toLowerCase().contains(query.toLowerCase())).toList()
       ..sort((a, b) => (b.pinned ? 1 : 0).compareTo(a.pinned ? 1 : 0));
-    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 100), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 24), children: [
       TextField(
         onChanged: (v) => setState(() => query = v),
         decoration: InputDecoration(prefixIcon: const Icon(Icons.search), hintText: widget.t('searchNotes'), filled: true, fillColor: widget.data.theme.card, border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none)),
@@ -747,7 +752,7 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 100), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 24), children: [
       _SectionCard(data: data, title: t('language'), child: SegmentedButton<String>(
         selected: {data.language},
         segments: const [ButtonSegment(value: 'ru', label: Text('RU')), ButtonSegment(value: 'en', label: Text('EN'))],
@@ -785,17 +790,30 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(26),
       onTap: onTap,
-      child: _Card(data: data, child: Row(children: [
-        CircleAvatar(radius: 28, backgroundColor: data.theme.primary.withOpacity(.16), child: Icon(icon, color: data.theme.primary, size: 28)),
-        const SizedBox(width: 14),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text(label, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-          const SizedBox(height: 6),
-          Text(value, overflow: TextOverflow.ellipsis, style: TextStyle(color: data.theme.muted, fontWeight: FontWeight.w900, fontSize: 22)),
-        ])),
-      ])),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: data.theme.card,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: data.theme.line),
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 14, offset: Offset(0, 8))],
+        ),
+        child: Row(children: [
+          CircleAvatar(radius: 24, backgroundColor: data.theme.primary.withOpacity(.16), child: Icon(icon, color: data.theme.primary, size: 24)),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, height: 1.05)),
+            const SizedBox(height: 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(value, style: TextStyle(color: data.theme.muted, fontWeight: FontWeight.w900, fontSize: 20)),
+            ),
+          ])),
+        ]),
+      ),
     );
   }
 }
@@ -937,36 +955,39 @@ class NotificationService {
   Future<void> scheduleAll(AppData data, String Function(String) t) async {
     if (!ready) return;
     await _plugin.cancelAll();
-    await requestPermissions();
     for (final habit in data.habits) {
       if (habit.reminderTime == null) continue;
       final tod = parseTime(habit.reminderTime!);
       var when = tz.TZDateTime(tz.local, DateTime.now().year, DateTime.now().month, DateTime.now().day, tod.hour, tod.minute);
       if (when.isBefore(tz.TZDateTime.now(tz.local))) when = when.add(const Duration(days: 1));
-      await _plugin.zonedSchedule(
-        100000 + stableId(habit.id),
-        t('habitReminder'),
-        habit.title,
-        when,
-        details(),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.time,
-      );
+      try {
+        await _plugin.zonedSchedule(
+          100000 + stableId(habit.id),
+          t('habitReminder'),
+          habit.title,
+          when,
+          details(),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time,
+        );
+      } catch (_) {}
     }
     for (final task in data.tasks) {
       if (task.done || task.reminderAt == null) continue;
       final when = tz.TZDateTime.from(task.reminderAt!, tz.local);
       if (when.isBefore(tz.TZDateTime.now(tz.local))) continue;
-      await _plugin.zonedSchedule(
-        200000 + stableId(task.id),
-        t('taskReminder'),
-        task.title,
-        when,
-        details(),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      );
+      try {
+        await _plugin.zonedSchedule(
+          200000 + stableId(task.id),
+          t('taskReminder'),
+          task.title,
+          when,
+          details(),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        );
+      } catch (_) {}
     }
   }
 }
@@ -1128,6 +1149,16 @@ TimeOfDay parseTime(String raw) {
   return TimeOfDay(hour: int.tryParse(p.first) ?? 9, minute: p.length > 1 ? int.tryParse(p[1]) ?? 0 : 0);
 }
 String money(double value) => NumberFormat.compactCurrency(symbol: '₽', decimalDigits: 0).format(value);
+
+String localDateLine(String language) {
+  final now = DateTime.now();
+  if (language == 'ru') {
+    const months = ['янв.', 'фев.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сен.', 'окт.', 'ноя.', 'дек.'];
+    const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    return '${days[now.weekday - 1]}, ${now.day} ${months[now.month - 1]}';
+  }
+  return DateFormat('EEE, d MMM').format(now);
+}
 int stableId(String id) => id.codeUnits.fold(0, (a, b) => (a * 31 + b) & 0x7fffffff) % 90000;
 IconData priorityIcon(String p) => p == 'high' ? Icons.priority_high_rounded : p == 'low' ? Icons.keyboard_arrow_down_rounded : Icons.remove_rounded;
 Color priorityColor(String p) => p == 'high' ? Colors.redAccent : p == 'low' ? Colors.greenAccent : Colors.amberAccent;
