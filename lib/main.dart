@@ -1035,10 +1035,10 @@ class AppData {
       return TaskItem(id: uid(), title: name, priority: ['low', 'medium', 'high'][r.nextInt(3)], dueAt: due, reminderAt: due.subtract(const Duration(hours: 1)));
     }).toList();
     final money = <MoneyItem>[
-      MoneyItem(id: uid(), title: language == 'ru' ? 'Зарплата' : 'Salary', amount: 65000 + r.nextInt(40000), type: 'income', category: language == 'ru' ? 'Работа' : 'Work', date: DateTime.now()),
-      MoneyItem(id: uid(), title: language == 'ru' ? 'Продукты' : 'Groceries', amount: 3500 + r.nextInt(3000), type: 'expense', category: language == 'ru' ? 'Еда' : 'Food', date: DateTime.now()),
-      MoneyItem(id: uid(), title: language == 'ru' ? 'Транспорт' : 'Transport', amount: 900 + r.nextInt(1200), type: 'expense', category: language == 'ru' ? 'Дорога' : 'Travel', date: DateTime.now()),
-      MoneyItem(id: uid(), title: language == 'ru' ? 'Книги' : 'Books', amount: 1200 + r.nextInt(2000), type: 'expense', category: language == 'ru' ? 'Учёба' : 'Study', date: DateTime.now()),
+      MoneyItem(id: uid(), title: language == 'ru' ? 'Зарплата' : 'Salary', amount: (65000 + r.nextInt(40000)).toDouble(), type: 'income', category: language == 'ru' ? 'Работа' : 'Work', date: DateTime.now()),
+      MoneyItem(id: uid(), title: language == 'ru' ? 'Продукты' : 'Groceries', amount: (3500 + r.nextInt(3000)).toDouble(), type: 'expense', category: language == 'ru' ? 'Еда' : 'Food', date: DateTime.now()),
+      MoneyItem(id: uid(), title: language == 'ru' ? 'Транспорт' : 'Transport', amount: (900 + r.nextInt(1200)).toDouble(), type: 'expense', category: language == 'ru' ? 'Дорога' : 'Travel', date: DateTime.now()),
+      MoneyItem(id: uid(), title: language == 'ru' ? 'Книги' : 'Books', amount: (1200 + r.nextInt(2000)).toDouble(), type: 'expense', category: language == 'ru' ? 'Учёба' : 'Study', date: DateTime.now()),
     ];
     final notes = noteNames.map((name) => NoteItem(id: uid(), title: name, body: language == 'ru' ? 'Короткая заметка для планирования и быстрых мыслей.' : 'A short note for planning and quick thoughts.', color: noteColors[r.nextInt(noteColors.length)].value, pinned: r.nextBool(), createdAt: DateTime.now())).toList();
     return AppData(language: language, themeIndex: 0, habits: habits, tasks: tasks, money: money, notes: notes);
